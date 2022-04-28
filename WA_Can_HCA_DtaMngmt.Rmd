@@ -1,0 +1,124 @@
+---
+title: "WA_Can_HCA_DtaMngmt"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Set working directory
+setwd("C:/wa-cannabis-hca")
+
+# Clear workspace 
+rm(list = ls())
+
+# Load required libraries 
+library(survey)
+library(epiR)
+library(tidyverse)
+library(foreign)
+library(haven)
+
+```
+
+
+```{r}
+#### Load in the WA-BRFSS Data ####
+
+# WRITING THE TEMP FILE IS ONLY NECCESARY IF YOU DO NOT HAVE THE FILE IN CSV FORMAT
+
+# Read in the data as dta
+temp <- read_dta('data/MAS_2011_2020_v2.dta')
+
+# Re-write the file as a csv
+write.csv(temp, 'data/WA_2011_2020_BRFSS.csv')
+
+#Remove the dta file
+rm(temp)
+
+# Read in the newly created csv file for desired vars
+full <- read.csv("data/WA_2011_2020_BRFSS.csv", stringsAsFactors = F) %>%
+  select(year,
+         X_ststr,
+         X_llcpwt,
+         sex,
+         X_ageg5yr,
+         X_mrace1,
+         educa,
+         employ1,
+         income2,
+         smokday2,
+         alcday5,
+         menthlth,
+         hlthpln1,
+         medcost,
+         mjpast30
+         ) %>%
+  subset(year > 2014 & year < 2020) %>% # Years of interest given variable avail. are 2015 - 2019
+  subset(X_ageg5yr < 10 | X_ageg5yr == 14) # Removing individuals over 65 due to Medicare eligibility 
+
+# *Optional* Write to new file for memory efficiency 
+write.csv(full, "data/WA_2015_2019_BRFSS.csv")
+rm(list = ls())
+df <- read.csv("data/WA_2015_2019_BRFSS.csv")
+df$X <- NULL
+summary(df)
+
+```
+
+
+```{r}
+#### Assigning NA Values ####
+
+# Assigning the values of 7 or 9 "refusal" to NA within sex variable
+df$sex[df$sex == 7 | df$sex == 9] <- NA
+
+# Assigning the value of 14 to NA within the age variable
+df$X_ageg5yr[df$X_ageg5yr == 14] <- NA
+
+# Assigning the value of 77 and 99 to NA within the race variable
+df$X_mrace1[df$X_mrace1 == 77 | df$X_mrace1 == 99] <- NA
+
+# Assigning the value of 9 to NA within the edu. variable
+df$educa[df$educa == 9] <- NA
+
+# Assigning the value of 9 to NA within the employment variable
+df$employ1[df$employ1 == 9] <- NA
+
+# Assigning the value of 77 and 99 to NA within the income variable
+df$income2[df$income2 == 77 | df$income2 == 99] <- NA
+
+# Assigning the value of 77 and 99 to NA within the mental health variable
+df$menthlth[df$menthlth == 77 | df$menthlth == 99] <- NA
+
+# Assigning the value of 7 and 9 to NA within the insurance variable
+df$hlthpln1[df$hlthpln1 == 7 | df$hlthpln1 == 9] <- NA
+
+# Assigning the value of 7 and 9 to NA within the medical cost variable
+df$medcost[df$medcost == 7 | df$medcost == 9] <- NA
+
+# Assigning the value of 7 and 9 to NA within the smoking variable
+df$smokday2[df$smokday2 == 7 | df$smokday2 == 9] <- NA
+
+# Assigning the value of 777 and 999 to NA within the alc. variable
+df$alcday5[df$alcday5 == 777 | df$alcday5 == 999] <- NA
+
+# Assigning the value of 77 and 99 to NA within the cannabis variable
+df$mjpast30[df$mjpast30 == 77 | df$mjpast30 == 99] <- NA
+
+summary(df)
+
+```
+
+```{r}
+#### Dropping All Observations Where MJ or HCA is NA ####
+
+df <- df %>%
+  filter(!is.na(mjpast30) & !is.na(medcost) & !is.na(menthlth)) 
+summary(df)
+
+```
+
+
+
+
